@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/order_provider.dart';
+import '../widgets/theme_mode_button.dart';
 
 class DriverTrackingScreen extends StatefulWidget {
   const DriverTrackingScreen({super.key});
@@ -10,10 +14,11 @@ class DriverTrackingScreen extends StatefulWidget {
 }
 
 class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
+  final MapController _mapController = MapController();
+
   @override
   void initState() {
     super.initState();
-    // Start tracking driver location on load
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final orderProvider = Provider.of<OrderProvider>(context, listen: false);
       if (orderProvider.currentOrder?.driverId != null) {
@@ -27,8 +32,13 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
   Widget build(BuildContext context) {
     final orderProvider = Provider.of<OrderProvider>(context);
     final currentOrder = orderProvider.currentOrder;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    // Find driver info from the list
+    final driverLocation = LatLng(
+      orderProvider.liveLat ?? 13.5783,
+      orderProvider.liveLng ?? 44.0139,
+    );
+
     final driver = orderProvider.drivers.firstWhere(
       (d) => d.id == currentOrder?.driverId,
       orElse: () => orderProvider.drivers.isNotEmpty
@@ -39,77 +49,134 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('تتبع السائق مباشر'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        actions: const [ThemeModeButton()],
       ),
       body: Stack(
         children: [
-          // Map Placeholder with Live Driver Marker
-          Container(
-            color: Colors.grey[200],
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.map, size: 100, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  const Text('خريطة تتبع السائق (Google Maps)'),
-                  if (orderProvider.liveLat != null)
-                    Text(
-                        'موقع السائق المباشر: ${orderProvider.liveLat}, ${orderProvider.liveLng}')
-                  else
-                    const Text('جاري جلب موقع السائق...'),
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: driverLocation,
+              initialZoom: 15,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.siqayah.app',
+              ),
+              const MarkerLayer(markers: []),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: driverLocation,
+                    width: 80,
+                    height: 80,
+                    child: const Icon(
+                      Icons.local_shipping,
+                      color: Colors.red,
+                      size: 40,
+                    ),
+                  ),
                 ],
               ),
-            ),
+            ],
           ),
-
-          // Live Driver Marker on Map (Simulated)
-          if (orderProvider.liveLat != null)
-            Positioned(
-              left: 150 + (orderProvider.liveLng! - 46.6753) * 5000,
-              top: 350 + (orderProvider.liveLat! - 24.7136) * 5000,
-              child:
-                  const Icon(Icons.local_shipping, color: Colors.red, size: 40),
-            ),
-
-          // Driver Info Card
           Positioned(
             bottom: 20,
             left: 20,
             right: 20,
             child: Card(
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.straighten,
+                                color: colorScheme.primary,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                '${orderProvider.distanceToUser.toStringAsFixed(2)} كم',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          VerticalDivider(
+                            width: 20,
+                            color: colorScheme.outlineVariant,
+                          ),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.timer,
+                                color: Colors.orange,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                orderProvider.estimatedArrivalTime,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Row(
                       children: [
-                        const CircleAvatar(
+                        CircleAvatar(
                           radius: 30,
-                          backgroundColor: Colors.blue,
-                          child:
-                              Icon(Icons.person, size: 40, color: Colors.white),
+                          backgroundColor: colorScheme.primary,
+                          child: Icon(
+                            Icons.person,
+                            size: 40,
+                            color: colorScheme.onPrimary,
+                          ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(driver.name,
-                                  style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold)),
+                              Text(
+                                driver.name,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               Row(
                                 children: [
-                                  const Icon(Icons.star,
-                                      color: Colors.amber, size: 20),
-                                  Text('${driver.rating}',
-                                      style: const TextStyle(fontSize: 16)),
+                                  const Icon(
+                                    Icons.star,
+                                    color: Colors.amber,
+                                    size: 20,
+                                  ),
+                                  Text(
+                                    '${driver.rating}',
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
                                 ],
                               ),
                             ],
@@ -118,19 +185,22 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            const Text('حالة الطلب',
-                                style: TextStyle(
-                                    fontSize: 14, color: Colors.grey)),
                             Text(
-                                currentOrder?.status
-                                        .toString()
-                                        .split('.')
-                                        .last ??
-                                    'جاري المعالجة',
-                                style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue)),
+                              'حالة الطلب',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            Text(
+                              currentOrder?.status.toString().split('.').last ??
+                                  'جاري المعالجة',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -157,8 +227,6 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
                             icon: const Icon(Icons.message),
                             label: const Text('مراسلة'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),

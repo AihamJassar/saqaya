@@ -29,7 +29,8 @@ class FirestoreService {
 
     return snapshot.docs.map((doc) {
       final data = doc.data() as Map<String, dynamic>;
-      return DriverModel.fromMap(data, doc.id);
+      // بدلاً من DriverModel.fromMap(data, doc.id)
+      return DriverModel.fromFirestore(doc.id, data);
     }).toList();
   }
 

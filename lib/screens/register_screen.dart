@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/user_provider.dart';
 import '../services/auth_service.dart';
+import '../widgets/theme_mode_button.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -31,7 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_formKey.currentState!.validate()) {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       userProvider.setLoading(true);
-      
+
       try {
         final user = await _authService.register(
           _nameController.text.trim(),
@@ -39,9 +41,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _emailController.text.trim(),
           _passwordController.text,
         );
-        
+
         userProvider.setLoading(false);
-        
+
         if (user != null) {
           userProvider.setUser(user);
           if (mounted) {
@@ -62,16 +64,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = Provider.of<UserProvider>(context).isLoading;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('إنشاء حساب جديد'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        actions: const [ThemeModeButton()],
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
             child: Column(
@@ -83,10 +85,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: const InputDecoration(
                     labelText: 'الاسم الكامل',
                     prefixIcon: Icon(Icons.person),
-                    border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'يرجى إدخال الاسم';
+                    if (value == null || value.isEmpty) {
+                      return 'يرجى إدخال الاسم';
+                    }
                     return null;
                   },
                 ),
@@ -97,11 +100,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: const InputDecoration(
                     labelText: 'رقم الهاتف',
                     prefixIcon: Icon(Icons.phone),
-                    border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'يرجى إدخال رقم الهاتف';
-                    if (value.length < 10) return 'رقم الهاتف غير صحيح';
+                    if (value == null || value.isEmpty) {
+                      return 'يرجى إدخال رقم الهاتف';
+                    }
+                    if (value.length < 10) {
+                      return 'رقم الهاتف غير صحيح';
+                    }
                     return null;
                   },
                 ),
@@ -112,11 +118,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: const InputDecoration(
                     labelText: 'البريد الإلكتروني',
                     prefixIcon: Icon(Icons.email),
-                    border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'يرجى إدخال البريد الإلكتروني';
-                    if (!value.contains('@')) return 'البريد الإلكتروني غير صحيح';
+                    if (value == null || value.isEmpty) {
+                      return 'يرجى إدخال البريد الإلكتروني';
+                    }
+                    if (!value.contains('@')) {
+                      return 'البريد الإلكتروني غير صحيح';
+                    }
                     return null;
                   },
                 ),
@@ -127,11 +136,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: const InputDecoration(
                     labelText: 'كلمة المرور',
                     prefixIcon: Icon(Icons.lock),
-                    border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'يرجى إدخال كلمة المرور';
-                    if (value.length < 6) return 'كلمة المرور يجب أن تكون 6 خانات على الأقل';
+                    if (value == null || value.isEmpty) {
+                      return 'يرجى إدخال كلمة المرور';
+                    }
+                    if (value.length < 6) {
+                      return 'كلمة المرور يجب أن تكون 6 خانات على الأقل';
+                    }
                     return null;
                   },
                 ),
@@ -140,12 +152,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onPressed: isLoading ? null : _register,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
                   ),
-                  child: isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('تسجيل', style: TextStyle(fontSize: 18)),
+                  child: isLoading
+                      ? CircularProgressIndicator(
+                          color: colorScheme.onPrimary,
+                        )
+                      : const Text('تسجيل', style: TextStyle(fontSize: 18)),
                 ),
               ],
             ),

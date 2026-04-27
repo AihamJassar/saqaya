@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+
+import '../models/order_model.dart';
 import '../providers/order_provider.dart';
 import '../providers/user_provider.dart';
-import '../models/order_model.dart';
+import '../widgets/theme_mode_button.dart';
 
 class OrderScreen extends StatefulWidget {
   const OrderScreen({super.key});
@@ -15,104 +18,166 @@ class _OrderScreenState extends State<OrderScreen> {
   int _quantity = 5;
   final double _pricePerM3 = 15.0;
 
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) throw 'خدمة الموقع غير مفعلة';
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) throw 'تم رفض إذن الموقع';
+    }
+    return Geolocator.getCurrentPosition();
+  }
+
   void _confirmOrder() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-    
+
     if (userProvider.user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يرجى تسجيل الدخول أولاً')),
+        const SnackBar(content: Text('سجل دخولك أولاً')),
       );
       return;
     }
 
-    // Create order object
-    final newOrder = OrderModel(
-      id: '', // Firestore will generate this
-      userId: userProvider.user!.id,
-      driverId: orderProvider.drivers.isNotEmpty ? orderProvider.drivers.first.id : null,
-      quantity: _quantity,
-      price: _quantity * _pricePerM3,
-      status: OrderStatus.pending,
-      createdAt: DateTime.now(),
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
-    
+
     try {
+      final position = await _determinePosition();
+      final newOrder = OrderModel(
+        id: '',
+        userId: userProvider.user!.id,
+        driverId: orderProvider.drivers.isNotEmpty
+            ? orderProvider.drivers.first.id
+            : null,
+        quantity: _quantity,
+        price: _quantity * _pricePerM3,
+        status: OrderStatus.pending,
+        createdAt: DateTime.now(),
+        userLat: position.latitude,
+        userLng: position.longitude,
+      );
+
       await orderProvider.addOrder(newOrder);
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/tracking');
-      }
+      if (mounted) Navigator.pop(context);
+      Navigator.pushReplacementNamed(context, '/driver_tracking');
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل في إنشاء الطلب: ${e.toString()}')),
-        );
-      }
+      if (mounted) Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ: $e')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = Provider.of<OrderProvider>(context).isLoading;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تفاصيل الطلب'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        title: const Text('طلب سقاية'),
+        actions: const [ThemeModeButton()],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('اختر الكمية المطلوبة (متر مكعب)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 24),
+            const Text(
+              'اختر كمية الماء المطلوبة',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 30),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline, size: 40, color: Colors.blue),
-                  onPressed: () {
-                    if (_quantity > 5) setState(() => _quantity -= 5);
-                  },
+                _quantityButton(
+                  context,
+                  Icons.add,
+                  () => setState(() => _quantity++),
+                  colorScheme.primary,
                 ),
-                const SizedBox(width: 24),
-                Text('$_quantity', style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 24),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline, size: 40, color: Colors.blue),
-                  onPressed: () {
-                    if (_quantity < 50) setState(() => _quantity += 5);
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: Column(
+                    children: [
+                      Text(
+                        '$_quantity',
+                        style: const TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'متر مكعب',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _quantityButton(
+                  context,
+                  Icons.remove,
+                  () {
+                    if (_quantity > 1) setState(() => _quantity--);
                   },
+                  colorScheme.error,
                 ),
               ],
             ),
-            const SizedBox(height: 48),
-            const Divider(),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('السعر الإجمالي:', style: TextStyle(fontSize: 20)),
-                Text('${_quantity * _pricePerM3} ريال', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue)),
-              ],
-            ),
-            const Spacer(),
-            ElevatedButton(
-              onPressed: isLoading ? null : _confirmOrder,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            const SizedBox(height: 40),
+            Text(
+              'السعر الإجمالي: ${_quantity * _pricePerM3} ريال',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.green.shade600,
+                fontWeight: FontWeight.bold,
               ),
-              child: isLoading 
-                ? const CircularProgressIndicator(color: Colors.white)
-                : const Text('تأكيد الطلب', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 50),
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton.icon(
+                onPressed: _confirmOrder,
+                icon: const Icon(Icons.location_on),
+                label: const Text(
+                  'تأكيد الطلب ونشر موقعي',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _quantityButton(
+    BuildContext context,
+    IconData icon,
+    VoidCallback onPressed,
+    Color color,
+  ) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color),
+        ),
+        child: Icon(icon, color: color, size: 30),
       ),
     );
   }

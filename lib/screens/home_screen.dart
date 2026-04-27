@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
-// 1. التعديل الأول: إضافة 'as latlong' لكي يعمل الكود الذي كتبته بالأسفل
 import 'package:latlong2/latlong.dart' as latlong;
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../models/driver_model.dart';
 import '../providers/order_provider.dart';
 import '../providers/user_provider.dart';
+import '../widgets/theme_mode_button.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,26 +23,77 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-
-      orderProvider.fetchDrivers();
-      if (userProvider.user != null) {
-        orderProvider.fetchUserOrders(userProvider.user!.id);
+      if (mounted) {
+        Provider.of<OrderProvider>(context, listen: false).fetchDrivers();
       }
     });
+  }
+
+  void _showDriverDetails(BuildContext context, DriverModel driver) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.person_pin, size: 50, color: colorScheme.primary),
+              const SizedBox(height: 10),
+              Text(
+                'بيانات السائق: ${driver.name}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Divider(),
+              const ListTile(
+                leading: Icon(Icons.star, color: Colors.amber),
+                title: Text('التقييم: 4.9 (ممتاز)'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.phone, color: Colors.green),
+                title: const Text('اتصال هاتفي'),
+                subtitle: Text(driver.phone),
+                onTap: () async {
+                  final launchUri = Uri(scheme: 'tel', path: driver.phone);
+                  if (await canLaunchUrl(launchUri)) {
+                    await launchUrl(launchUri);
+                  }
+                },
+              ),
+              const SizedBox(height: 15),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/order');
+                },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                child: const Text(
+                  'طلب الخدمة من هذا السائق',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
-
-    if (index == 0) {
-      Navigator.pushNamed(context, '/home');
-    } else if (index == 1) {
-      Navigator.pushNamed(context, '/tracking');
-    } else if (index == 2) {
+    if (index == 2) {
       Navigator.pushNamed(context, '/profile');
     }
   }
@@ -48,27 +102,18 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final orderProvider = Provider.of<OrderProvider>(context);
     final userProvider = Provider.of<UserProvider>(context);
-
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: const Text('سقيا - توصيل مياه'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {},
-          ),
-        ],
+        actions: const [ThemeModeButton()],
       ),
       body: Stack(
         children: [
-          // 1. طبقة الخريطة الحقيقية
           FlutterMap(
-            options: MapOptions(
-              // 2. التعديل الثاني: التأكد من عدم وجود كلمة const هنا لأن LatLng ليست ثابتة
+            options: const MapOptions(
               initialCenter: latlong.LatLng(13.5783, 44.0139),
-              initialZoom: 13.0,
+              initialZoom: 13,
             ),
             children: [
               TileLayer(
@@ -76,85 +121,124 @@ class _HomeScreenState extends State<HomeScreen> {
                 userAgentPackageName: 'com.example.siqayah',
               ),
               MarkerLayer(
-                markers: orderProvider.drivers
-                    .map((driver) => Marker(
-                          point:
-                              latlong.LatLng(driver.latitude, driver.longitude),
-                          width: 40,
-                          height: 40,
-                          child: const Icon(Icons.local_shipping,
-                              color: Colors.blue, size: 30),
-                        ))
-                    .toList(),
+                markers: orderProvider.drivers.map((driver) {
+                  return Marker(
+                    point: latlong.LatLng(driver.latitude, driver.longitude),
+                    width: 65,
+                    height: 65,
+                    child: GestureDetector(
+                      onTap: () => _showDriverDetails(context, driver),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.local_shipping,
+                            color: colorScheme.primary,
+                            size: 35,
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surface.withOpacity(0.92),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.15),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              driver.name,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
             ],
           ),
-
-          // 2. طبقة نصوص الترحيب
           IgnorePointer(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 100),
-                  if (userProvider.user != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        // 3. التعديل الثالث: استخدام withValues للألوان ليتوافق مع أحدث إصدار Flutter
-                        color: Colors.white.withValues(alpha: 0.8),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text('مرحباً، ${userProvider.user!.name}',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                ],
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: userProvider.user != null
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface.withOpacity(0.92),
+                          borderRadius: BorderRadius.circular(25),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          'مرحباً، ${userProvider.user!.name}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      )
+                    : const SizedBox(),
               ),
             ),
           ),
-
-          // 3. طبقة البطاقة والزر
           Positioned(
             bottom: 20,
             left: 20,
             right: 20,
             child: Card(
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text('سعر المتر المكعب:',
-                            style: TextStyle(fontSize: 16)),
-                        Text('15 ريال',
-                            style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue)),
+                      children: [
+                        const Text(
+                          'سعر المتر المكعب:',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        Text(
+                          '15 ريال',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.primary,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/order');
-                      },
+                      onPressed: () => Navigator.pushNamed(context, '/order'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('طلب ماء الآن',
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'طلب ماء الآن',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -164,13 +248,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'الرئيسية'),
           BottomNavigationBarItem(icon: Icon(Icons.history), label: 'طلباتي'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'حسابي'),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
         onTap: _onItemTapped,
       ),
     );

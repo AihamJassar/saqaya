@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/user_provider.dart';
 import '../services/auth_service.dart';
+import '../widgets/theme_mode_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,15 +29,15 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_formKey.currentState!.validate()) {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       userProvider.setLoading(true);
-      
+
       try {
         final user = await _authService.login(
           _emailController.text.trim(),
           _passwordController.text,
         );
-        
+
         userProvider.setLoading(false);
-        
+
         if (user != null) {
           userProvider.setUser(user);
           if (mounted) {
@@ -56,25 +58,33 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = Provider.of<UserProvider>(context).isLoading;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 60),
-                  const Icon(Icons.water_drop, size: 80, color: Colors.blue),
+                  const Align(
+                    alignment: AlignmentDirectional.topEnd,
+                    child: ThemeModeButton(),
+                  ),
+                  const SizedBox(height: 36),
+                  Icon(Icons.water_drop, size: 80, color: colorScheme.primary),
                   const SizedBox(height: 24),
-                  const Text(
+                  Text(
                     'تسجيل الدخول',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blue),
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.primary,
+                    ),
                   ),
                   const SizedBox(height: 48),
                   TextFormField(
@@ -83,11 +93,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: const InputDecoration(
                       labelText: 'البريد الإلكتروني',
                       prefixIcon: Icon(Icons.email),
-                      border: OutlineInputBorder(),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'يرجى إدخال البريد الإلكتروني';
-                      if (!value.contains('@')) return 'البريد الإلكتروني غير صحيح';
+                      if (value == null || value.isEmpty) {
+                        return 'يرجى إدخال البريد الإلكتروني';
+                      }
+                      if (!value.contains('@')) {
+                        return 'البريد الإلكتروني غير صحيح';
+                      }
                       return null;
                     },
                   ),
@@ -98,11 +111,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: const InputDecoration(
                       labelText: 'كلمة المرور',
                       prefixIcon: Icon(Icons.lock),
-                      border: OutlineInputBorder(),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'يرجى إدخال كلمة المرور';
-                      if (value.length < 6) return 'كلمة المرور يجب أن تكون 6 خانات على الأقل';
+                      if (value == null || value.isEmpty) {
+                        return 'يرجى إدخال كلمة المرور';
+                      }
+                      if (value.length < 6) {
+                        return 'كلمة المرور يجب أن تكون 6 خانات على الأقل';
+                      }
                       return null;
                     },
                   ),
@@ -111,12 +127,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
                     ),
-                    child: isLoading 
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('دخول', style: TextStyle(fontSize: 18)),
+                    child: isLoading
+                        ? CircularProgressIndicator(
+                            color: colorScheme.onPrimary,
+                          )
+                        : const Text('دخول', style: TextStyle(fontSize: 18)),
                   ),
                   const SizedBox(height: 16),
                   TextButton(

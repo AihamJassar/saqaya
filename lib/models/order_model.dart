@@ -6,10 +6,14 @@ class OrderModel {
   final String id;
   final String userId;
   final String? driverId;
-  final int quantity; // in m3
+  final int quantity; // بالمتر المكعب
   final double price;
   final OrderStatus status;
   final DateTime createdAt;
+
+  // --- الإضافة الجديدة: إحداثيات موقع العميل ---
+  final double userLat; // خط العرض لموقع العميل
+  final double userLng; // خط الطول لموقع العميل
 
   OrderModel({
     required this.id,
@@ -19,6 +23,9 @@ class OrderModel {
     required this.price,
     required this.status,
     required this.createdAt,
+    // إضافة المتغيرات في البناء (Constructor)
+    required this.userLat,
+    required this.userLng,
   });
 
   factory OrderModel.fromMap(Map<String, dynamic> map, String documentId) {
@@ -32,7 +39,12 @@ class OrderModel {
         (e) => e.toString().split('.').last == map['status'],
         orElse: () => OrderStatus.pending,
       ),
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      createdAt: map['createdAt'] != null
+          ? (map['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
+      // جلب الإحداثيات من قاعدة البيانات
+      userLat: (map['userLat'] ?? 0.0).toDouble(),
+      userLng: (map['userLng'] ?? 0.0).toDouble(),
     );
   }
 
@@ -44,6 +56,9 @@ class OrderModel {
       'price': price,
       'status': status.toString().split('.').last,
       'createdAt': Timestamp.fromDate(createdAt),
+      // حفظ الإحداثيات في Firestore
+      'userLat': userLat,
+      'userLng': userLng,
     };
   }
 }
