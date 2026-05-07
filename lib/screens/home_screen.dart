@@ -7,7 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/driver_model.dart';
 import '../providers/order_provider.dart';
 import '../providers/user_provider.dart';
-import '../widgets/theme_mode_button.dart';
+import '../widgets/main_layout.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,8 +17,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-
   @override
   void initState() {
     super.initState();
@@ -55,7 +53,9 @@ class _HomeScreenState extends State<HomeScreen> {
               const Divider(),
               const ListTile(
                 leading: Icon(Icons.star, color: Colors.amber),
-                title: Text('التقييم: 4.9 (ممتاز)'),
+                title: Text(
+                  'التقييم: 4.9 (ممتاز)',
+                ),
               ),
               ListTile(
                 leading: const Icon(Icons.phone, color: Colors.green),
@@ -89,25 +89,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    if (index == 2) {
-      Navigator.pushNamed(context, '/profile');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final orderProvider = Provider.of<OrderProvider>(context);
     final userProvider = Provider.of<UserProvider>(context);
     final colorScheme = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('سقيا - توصيل مياه'),
-        actions: const [ThemeModeButton()],
-      ),
+
+    return MainLayout(
+      title: 'سقيا - توصيل مياه',
+      currentIndex: 0,
       body: Stack(
         children: [
           FlutterMap(
@@ -141,11 +131,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: colorScheme.surface.withOpacity(0.92),
+                              color:
+                                  colorScheme.surface.withValues(alpha: 0.92),
                               borderRadius: BorderRadius.circular(8),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.15),
+                                  color: Colors.black.withValues(alpha: 0.15),
                                   blurRadius: 4,
                                 ),
                               ],
@@ -178,17 +169,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: colorScheme.surface.withOpacity(0.92),
+                          color: colorScheme.surface.withValues(alpha: 0.92),
                           borderRadius: BorderRadius.circular(25),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
+                              color: Colors.black.withValues(alpha: 0.08),
                               blurRadius: 10,
                             ),
                           ],
                         ),
                         child: Text(
-                          'مرحباً، ${userProvider.user!.name}',
+                          'مرحبا، ${userProvider.user!.name}',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: colorScheme.primary,
@@ -246,16 +237,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'الرئيسية'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'طلباتي'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'حسابي'),
-        ],
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
       ),
     );
   }

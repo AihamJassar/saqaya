@@ -6,10 +6,12 @@ import '../services/auth_service.dart';
 class UserProvider with ChangeNotifier {
   UserModel? _user;
   bool _isLoading = false;
+  bool _isInitializing = true;
   final AuthService _authService = AuthService();
 
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
+  bool get isInitializing => _isInitializing;
   bool get isAuthenticated => _user != null;
 
   UserProvider() {
@@ -20,6 +22,7 @@ class UserProvider with ChangeNotifier {
       } else {
         _user = null;
       }
+      _isInitializing = false;
       notifyListeners();
     });
   }

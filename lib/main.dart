@@ -116,13 +116,65 @@ class WaterDeliveryApp extends StatelessWidget {
       darkTheme: _buildTheme(Brightness.dark),
       initialRoute: '/login',
       routes: {
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/home': (context) => const HomeScreen(),
-        '/order': (context) => const OrderScreen(),
-        '/driver_tracking': (context) => const DriverTrackingScreen(),
-        '/profile': (context) => const ProfileScreen(),
+        '/login': (context) => const AuthGuard(
+              redirectIfAuthenticated: true,
+              child: LoginScreen(),
+            ),
+        '/register': (context) => const AuthGuard(
+              redirectIfAuthenticated: true,
+              child: RegisterScreen(),
+            ),
+        '/home': (context) => const AuthGuard(
+              requiresAuth: true,
+              child: HomeScreen(),
+            ),
+        '/order': (context) => const AuthGuard(
+              requiresAuth: true,
+              child: OrderScreen(),
+            ),
+        '/driver_tracking': (context) => const AuthGuard(
+              requiresAuth: true,
+              child: DriverTrackingScreen(),
+            ),
+        '/profile': (context) => const AuthGuard(
+              requiresAuth: true,
+              child: ProfileScreen(),
+            ),
       },
     );
+  }
+}
+
+class AuthGuard extends StatelessWidget {
+  const AuthGuard({
+    super.key,
+    required this.child,
+    this.requiresAuth = false,
+    this.redirectIfAuthenticated = false,
+  });
+
+  final Widget child;
+  final bool requiresAuth;
+  final bool redirectIfAuthenticated;
+
+  @override
+  Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
+
+    if (userProvider.isInitializing) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (requiresAuth && !userProvider.isAuthenticated) {
+      return const LoginScreen();
+    }
+
+    if (redirectIfAuthenticated && userProvider.isAuthenticated) {
+      return const HomeScreen();
+    }
+
+    return child;
   }
 }

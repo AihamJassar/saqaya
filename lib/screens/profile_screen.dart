@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
+import '../widgets/main_layout.dart';
 import '../widgets/theme_mode_button.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -26,11 +27,9 @@ class ProfileScreen extends StatelessWidget {
     final user = userProvider.user;
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('الملف الشخصي'),
-        actions: const [ThemeModeButton()],
-      ),
+    return MainLayout(
+      title: 'الملف الشخصي',
+      currentIndex: 2,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -80,7 +79,9 @@ class ProfileScreen extends StatelessWidget {
             ),
             ListTile(
               leading: Icon(Icons.help_outline, color: colorScheme.primary),
-              title: const Text('المساعدة والدعم'),
+              title: const Text(
+                'المساعدة والدعم',
+              ),
               onTap: () {},
             ),
             ListTile(

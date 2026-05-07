@@ -3,8 +3,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
+import '../models/driver_model.dart';
 import '../providers/order_provider.dart';
-import '../widgets/theme_mode_button.dart';
+import '../widgets/main_layout.dart';
 
 class DriverTrackingScreen extends StatefulWidget {
   const DriverTrackingScreen({super.key});
@@ -28,6 +29,19 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
     });
   }
 
+  DriverModel? _selectedDriver(OrderProvider orderProvider) {
+    final currentOrder = orderProvider.currentOrder;
+
+    if (orderProvider.drivers.isEmpty) {
+      return null;
+    }
+
+    return orderProvider.drivers.firstWhere(
+      (driver) => driver.id == currentOrder?.driverId,
+      orElse: () => orderProvider.drivers.first,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final orderProvider = Provider.of<OrderProvider>(context);
@@ -39,18 +53,11 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
       orderProvider.liveLng ?? 44.0139,
     );
 
-    final driver = orderProvider.drivers.firstWhere(
-      (d) => d.id == currentOrder?.driverId,
-      orElse: () => orderProvider.drivers.isNotEmpty
-          ? orderProvider.drivers.first
-          : throw Exception('No drivers available'),
-    );
+    final driver = _selectedDriver(orderProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('تتبع السائق مباشر'),
-        actions: const [ThemeModeButton()],
-      ),
+    return MainLayout(
+      title: 'تتبع السائق مباشر',
+      currentIndex: 1,
       body: Stack(
         children: [
           FlutterMap(
@@ -64,7 +71,6 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.siqayah.app',
               ),
-              const MarkerLayer(markers: []),
               MarkerLayer(
                 markers: [
                   Marker(
@@ -97,7 +103,7 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
                         horizontal: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: colorScheme.primary.withOpacity(0.12),
+                        color: colorScheme.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -160,7 +166,7 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                driver.name,
+                                driver?.name ?? 'السائق',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -174,7 +180,7 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
                                     size: 20,
                                   ),
                                   Text(
-                                    '${driver.rating}',
+                                    driver?.rating.toString() ?? '-',
                                     style: const TextStyle(fontSize: 16),
                                   ),
                                 ],
@@ -239,7 +245,9 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
                         orderProvider.clearCurrentOrder();
                         Navigator.pushReplacementNamed(context, '/home');
                       },
-                      child: const Text('العودة للرئيسية'),
+                      child: const Text(
+                        'العودة للرئيسية',
+                      ),
                     ),
                   ],
                 ),
